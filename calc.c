@@ -14,13 +14,17 @@ char buffer[BUF_SIZE];
 int num_ops;
 
 /* Step 3: add mutual exclusion */
-
+static pthread_mutex_t buffer_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /* Step 6: add condition flag varaibles */
-
+struct progress_t{
+    int add;
+    int mult;
+    int group;
+} progress;
 
 /* Step 7: use a semaphore */
-
+static sem_t progress_lock;
 
 /* Utiltity functions provided for your convenience */
 
