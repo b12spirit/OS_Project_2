@@ -87,7 +87,7 @@ void *adder(void *arg)
 
 		/* storing this prevents having to recalculate it in the loop */
 		bufferlen = strlen(buffer);
-		operand = (char *)malloc(bufflen * sizeof(char));
+		operand = (char *)malloc(bufferlen * sizeof(char));
 
 		for (i = 0; i < bufferlen; i++)
 		{
