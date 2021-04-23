@@ -156,10 +156,10 @@ void *adder(void *arg)
 	/* Step 6: check progress */
 	//	printf("adder Waiting for progress\n");
     sem_wait(&progress_lock);
-    progress.add = changed ? 1 : 2; // 1 means changed, 2 didn't changed;
+    progress.add = num ? 1 : 2; // 1 means changed, 2 didn't changed;
     sem_post(&progress_lock);
     //	printf("adder posted progress\n");
-    changed = 0;
+    num = 0;
 	/* Step 5: let others play */
 	sched_yield();
     }else{sched_yield();}
