@@ -127,16 +127,16 @@ void *adder(void *arg)
             while (isNumeric(buffer[i]));
             remainderOffset = i;
             
-            int2string(result,nstring);
+            int2string(result,numstring);
             
             //printf("Changed Started at I = %d",i);
             char BufferBackup[500];
             strcpy(BufferBackup,&buffer);
             
             //printf("%s\n", buffer);
-            strcpy(buffer + startOffset, &nstring);
+            strcpy(buffer + startOffset, &numstring);
             //printf("%s\n", buffer);
-            strcpy(buffer + (startOffset + strlen(nstring)), &BufferBackup[remainderOffset]);
+            strcpy(buffer + (startOffset + strlen(numstring)), &BufferBackup[remainderOffset]);
             //printf("%s\n", buffer);
             bufferlen = bufferlen - (remainderOffset - 1 - startOffset);//5(35+5)-6  < So: 2 rm:6
             i = startOffset-1; ///2+4*6*9 [i=6] > 2+24*9 [i=3 *] > 
