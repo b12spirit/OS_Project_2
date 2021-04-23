@@ -141,7 +141,7 @@ void *adder(void *arg)
             bufferlen = bufferlen - (remainderOffset - 1 - startOffset);//5(35+5)-6  < So: 2 rm:6
             i = startOffset-1; ///2+4*6*9 [i=6] > 2+24*9 [i=3 *] > 
             
-            changed = 1;
+            num = 1;
             num_ops++;
         }
         
