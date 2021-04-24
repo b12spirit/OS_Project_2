@@ -114,7 +114,7 @@ void *adder(void *arg)
 				sum = value1 + value2;
 
 				// convert the numeric sum to a string
-				sprint(operand, "%d", sum);
+				//sprint(operand, "%d", sum);
 
 				operlength = strlen(operand);
 				// write the string sum back into the buffer
