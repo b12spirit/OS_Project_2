@@ -1,9 +1,7 @@
- /* Project 2 - Multithreaded calculator */
-// Name: Alonso Vidal
-
+/* Project 2 - Multithreaded calculator */
+// Name:
 
 #include "calc.h"
-
 pthread_t adderThread;
 pthread_t degrouperThread;
 pthread_t multiplierThread;
@@ -15,6 +13,7 @@ int num_ops;
 
 /* Step 3: add mutual exclusion */
 static pthread_mutex_t buffer_lock = PTHREAD_MUTEX_INITIALIZER;
+
 
 /* Step 6: add condition flag varaibles */
 struct progress_t{
@@ -76,8 +75,10 @@ void *adder(void *arg)
     int startOffset, remainderOffset;
     int i;
 
-    char numstring[50];
-    int num = 0;
+    //return NULL; /* remove this line to let the loop start*/
+    
+    char nstring[50];
+    int changed = 0;
     
     
     while (1) {
@@ -127,21 +128,21 @@ void *adder(void *arg)
             while (isNumeric(buffer[i]));
             remainderOffset = i;
             
-            int2string(result,numstring);
+            int2string(result,nstring);
             
             //printf("Changed Started at I = %d",i);
             char BufferBackup[500];
             strcpy(BufferBackup,&buffer);
             
             //printf("%s\n", buffer);
-            strcpy(buffer + startOffset, &numstring);
+            strcpy(buffer + startOffset, &nstring);
             //printf("%s\n", buffer);
-            strcpy(buffer + (startOffset + strlen(numstring)), &BufferBackup[remainderOffset]);
+            strcpy(buffer + (startOffset + strlen(nstring)), &BufferBackup[remainderOffset]);
             //printf("%s\n", buffer);
             bufferlen = bufferlen - (remainderOffset - 1 - startOffset);//5(35+5)-6  < So: 2 rm:6
             i = startOffset-1; ///2+4*6*9 [i=6] > 2+24*9 [i=3 *] > 
             
-            num = 1;
+            changed = 1;
             num_ops++;
         }
         
@@ -156,10 +157,10 @@ void *adder(void *arg)
 	/* Step 6: check progress */
 	//	printf("adder Waiting for progress\n");
     sem_wait(&progress_lock);
-    progress.add = num ? 1 : 2; // 1 means changed, 2 didn't changed;
+    progress.add = changed ? 1 : 2; // 1 means changed, 2 didn't changed;
     sem_post(&progress_lock);
     //	printf("adder posted progress\n");
-    num = 0;
+    changed = 0;
 	/* Step 5: let others play */
 	sched_yield();
     }else{sched_yield();}
@@ -171,42 +172,85 @@ void *adder(void *arg)
    "1+(30)+8"). */
 void *multiplier(void *arg)
 {
-    int bufferlen;
-    int value1, value2;
+    int bufferlen, changed;
+    int value1, value2,result;
     int startOffset, remainderOffset;
     int i;
 
-    return NULL; /* remove this line */
+    char nstring[50];
+    //return NULL; /* remove this line */
 
     while (1) {
+        if(progress.mult != 2){
 		/* Step 3: add mutual exclusion */
-
+	pthread_mutex_lock(&buffer_lock);
+    //printf("Multiplyer Active %s\n",buffer);
 
 	startOffset = remainderOffset = -1;
 	value1 = value2 = -1;
-
 	if (timeToFinish()) {
+	    pthread_mutex_unlock(&buffer_lock);
 	    return NULL;
 	}
-
 	/* storing this prevents having to recalculate it in the loop */
 	bufferlen = strlen(buffer);
-
 	/* Step 2: implement multiplier */
 	for (i = 0; i < bufferlen; i++) {
 	    // same as adder, but v1*v2
+	    if(isNumeric(buffer[i])) //copypasted from adder
+        {
+            startOffset = i;
+            
+            value1 = atoi(&buffer[i]);
+              //printf(value1);
+              
+            while (isdigit(buffer[i]))
+            {
+                i++;
+            }
+            if(buffer[i] != '*' || !isNumeric(buffer[i+1]))
+            {continue;}
+            value2 = string2int(&buffer[i+1]);
+            int result = value1 * value2;
+           //   printf("%d", result);
+            do{
+                i++;
+              }
+            while (isNumeric(buffer[i]));
+            remainderOffset = i;
+            
+            int2string(result,nstring);
+            strncpy(buffer + startOffset, &nstring[0], strlen(nstring));
+            strcpy(buffer + startOffset + strlen(nstring),buffer + remainderOffset);
+            
+            bufferlen = bufferlen - (remainderOffset - 1 - startOffset);//5(35+5)-6  < So: 2 rm:6
+            i = startOffset-1; ///2+4*6*9 [i=6] > 2+24*9 [i=3 *] > 
+            
+            startOffset = 0;
+            remainderOffset = 0;
+            changed = 1;
+            num_ops++;
+        }
 	}
 
 	// something missing?
 	/* Step 3: free the lock */
-	
 
 	/* Step 6: check progress */
+	//	printf("multi Waiting for progress\n");
+    sem_wait(&progress_lock);
+    progress.mult = changed ? 1 : 2; // 1 means changed, 2 didn't changed;
+    sem_post(&progress_lock);
+    //	printf("multi posted progress\n");
 
-
+    	pthread_mutex_unlock(&buffer_lock);
+        //printf("multiplier Thread Unlocked\n");
 	/* Step 5: let others play */
-
-    }
+	sched_yield();
+    
+    }else{sched_yield();}
+}
+    
 }
 
 
@@ -215,16 +259,18 @@ void *multiplier(void *arg)
    only the surrounded number. */
 void *degrouper(void *arg)
 {
+    int startOffset, remainderOffset;
     int bufferlen;
+    int changed;
     int i;
-
-    return NULL; /* remove this line */
+   
+    //return NULL; /* remove this line */
 
     while (1) {
-
+    if(progress.group != 2){
 		/* Step 3: add mutual exclusion */
-
-
+    pthread_mutex_lock(&buffer_lock);
+    //printf("Degrouer Active %s\n",buffer);
 	if (timeToFinish()) {
 	    return NULL;
 	}
@@ -235,21 +281,78 @@ void *degrouper(void *arg)
 	/* Step 2: implement degrouper */
 	for (i = 0; i < bufferlen; i++) {
 	    // check for '(' followed by a naked number followed by ')'
-	    // remove ')' by shifting the tail end of the expression
-	    // remove '(' by shifting the beginning of the expression
+	    
+	    if(buffer[i] == '(')
+	    {
+	        startOffset = i;
+	        
+	        if(!isNumeric(buffer[i+1]))
+	        {
+	            continue;
+	        }
+	        
+	        do{
+            i++;
+            }while (isNumeric(buffer[i]));
+            //printf(buffer+i);
+            ;
+	        if(buffer[i] == ')')
+	        {
+	            //printf("%s\n",buffer);
+	            remainderOffset = i;
+	             // remove ')' by shifting the tail end of the expression
+	            // remove '(' by shifting the beginning of the expression
+	        char BufferBackup[500];
+            strcpy(BufferBackup,&buffer);
+	            
+         
+	        //strcpy(BufferBackup,&buffer);
+            //printf("%s\n", buffer);
+	        strcpy(buffer+(startOffset), buffer+ (startOffset+1)); 
+	    //printf("%s\n", buffer);
+	        strcpy(buffer+remainderOffset-1,buffer +(remainderOffset)); //(442) >> // (442 
+	            
+            //printf("%s\n", buffer);
+	            //printf("|%s|\n",buffer);
+	            
+	           
+	             //printf("%s\n",buffer);
+	            bufferlen = bufferlen - 2;
+    	        changed = 1;
+                num_ops++;
+                i = -1; //start over in case of nested groups.
+	            
+	        }
+	        else
+	        {
+	            continue;
+	        }
+	        
+	    }
+	    
+	   
 	}
 
 	// something missing?
 	/* Step 3: free the lock */
-
-
+ pthread_mutex_unlock(&buffer_lock);
 	/* Step 6: check progress */
-
+//	printf("Ungrouper Waiting for progress\n");
+    sem_wait(&progress_lock);
+    progress.group = changed ? 1 : 2; // 1 means changed, 2 didn't changed;
+    sem_post(&progress_lock);
+    
+//	printf("Ungrouper Posted progress\n");
+   
+ //   printf("Ungrouper Thread Unlocked\n");
 
 	/* Step 5: let others play */
+	sched_yield();
 
-    }
-}
+    }else{
+        //printf("Degrouer skipped %s\n",buffer);
+        sched_yield();}
+}}
 
 
 /* sentinel waits for a number followed by a ; (e.g. "453;") to appear
@@ -259,16 +362,17 @@ void *degrouper(void *arg)
    proceed on the next (if available). */
 void *sentinel(void *arg)
 {
+    
     char numberBuffer[20];
     int bufferlen;
     int i;
 
-    return NULL; /* remove this line */
+    //return NULL; /* remove this line */
 
     while (1) {
-
+//printf("sentinel Active: Current buffer: %s\n",buffer);
 		/* Step 3: add mutual exclusion */
-
+    		pthread_mutex_lock(&buffer_lock);
 	if (timeToFinish()) {
 	    return NULL;
 	}
@@ -297,11 +401,38 @@ void *sentinel(void *arg)
 	}
 
 	// something missing?
+	
+	pthread_mutex_unlock(&buffer_lock);
 	/* Step 6: check for progress */
-
-
+	if (timeToFinish()) {
+	   // printf("Finished: %d\n", timeToFinish());
+	    return NULL;
+	}
+	
+    sem_wait(&progress_lock);
+    //printf("checking progress:{%d , %d, %d} %s  \n",progress.add,progress.mult,progress.group, buffer);
+    //Check if progress has been made
+    if (progress.add == 1 ||
+       progress.mult == 1 ||
+       progress.group == 1)
+    {
+        //if progress was made, restart all flags
+        progress.add = 0;
+        progress.mult = 0;
+        progress.group = 0;
+    }
+    //if no progress, verify deadlock.
+    if(progress.add == 2&&
+       progress.mult == 2 &&
+       progress.group == 2)
+    {
+        printErrorAndExit("No progress can be made\n"); 
+    }
+    sem_post(&progress_lock);
+    
+//printf("Sentinel Exited\n");
 	/* Step 5: let others play, too */
-
+    sched_yield();
     }
 }
 
@@ -314,9 +445,10 @@ void *reader(void *arg)
 	int currentlen;
 	int newlen;
 	int free;
-
+	//pthread_mutex_unlock(&buffer_lock);
+//	pthread_mutex_lock(&buffer_lock);
 	fgets(tBuffer, sizeof(tBuffer), stdin);
-
+    
 	/* Sychronization bugs in remainder of function need to be fixed */
 
 	newlen = strlen(tBuffer);
@@ -334,18 +466,23 @@ void *reader(void *arg)
 
 	while (free < newlen) {
 		// spinwaiting TO DO
+		//sched_yield();
 	}
 
 	/* Step 3: add mutual exclusion */
-
+    		//pthread_mutex_unlock(&buffer_lock);
 	/* we can add another expression now */
 	strcat(buffer, tBuffer);
 	strcat(buffer, ";");
-
+    
+    //printf(buffer);
+    
 	/* Step 6: reset flag variables indicating progress */
-
+    	
 	/* Stop when user enters '.' */
 	if (tBuffer[0] == '.') {
+	        pthread_mutex_unlock(&buffer_lock);
+	    	strcat(buffer, "\0");
 	    return NULL;
 	}
     }
@@ -358,13 +495,15 @@ int smp3_main(int argc, char **argv)
     void *arg = 0;		/* dummy value */
 
 	/* Step 7: initialize your semaphore */
-
+	sem_init(&progress_lock,0,1);
+     pthread_mutex_lock(&buffer_lock); //Reader locked;
+     
     /* let's create our threads */
-    if (pthread_create(&multiplierThread, NULL, multiplier, arg)
+    if (pthread_create(&readerThread, NULL, reader, arg)
 	|| pthread_create(&adderThread, NULL, adder, arg)
 	|| pthread_create(&degrouperThread, NULL, degrouper, arg)
 	|| pthread_create(&sentinelThread, NULL, sentinel, arg)
-	|| pthread_create(&readerThread, NULL, reader, arg)) {
+	|| pthread_create(&multiplierThread, NULL, multiplier, arg)) {
 	printErrorAndExit("Failed trying to create threads");
     }
 
@@ -373,19 +512,23 @@ int smp3_main(int argc, char **argv)
 	for processes. A call to pthread_join blocks the calling thread until 
 	the thread with identifier equal to the first argument terminates.*/
 	// If you join do not detach.
+	pthread_detach(readerThread);
     pthread_detach(multiplierThread);
     pthread_detach(adderThread);
     pthread_detach(degrouperThread);
-    pthread_detach(sentinelThread);
-    pthread_detach(readerThread);
+    //pthread_detach(sentinelThread);
+    //pthread_detach(readerThread);
 	/* Step 1: we have to join on the ________ thread. */
 	// pthread_join(____, NULL);
-
+    pthread_join(sentinelThread ,NULL);
+    
+    
     /* everything is finished, print out the number of operations performed */
     fprintf(stdout, "Performed a total of %d operations\n", num_ops);
 
 	// TODO destroy semaphores and mutex
-
+    sem_destroy(&progress_lock);
+    pthread_mutex_destroy(&progress_lock);
 
 	// return
     return EXIT_SUCCESS;
