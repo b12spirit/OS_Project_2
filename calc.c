@@ -76,7 +76,7 @@ void *adder(void *arg)
 
 		/* storing this prevents having to recalculate it in the loop */
 		bufferlen = strlen(buffer);
-		operand = (char *)malloc(bufflen * sizeof(char));
+		operand = (char *)malloc(bufferlen * sizeof(char));
 
 		for (i = 0; i < bufferlen; i++)
 		{
@@ -103,12 +103,12 @@ void *adder(void *arg)
 				// Left operand
 				strncpy(operand, &buffer[startOffset], i - startOffset);
 				operand[i - startOffset] = '\0';
-				string2int(value1, operand);
+				//string2int(value1, operand);
 
 				// Right operand
 				strncpy(operand, &buffer[remainderOffset], remainderOffset - i);
 				operand[remainderOffset - i] = '\0';
-				string2int(value2, operand);
+				//string2int(value2, operand);
 
 				// add the two operands
 				sum = value1 + value2;
@@ -313,7 +313,7 @@ int smp3_main(int argc, char **argv)
 	void *arg = 0; /* dummy value */
 
 	/* let's create our threads */
-	if (pthread_create(&multiplierThread, NULL, multiplier, arg) || pthread_create(&adderThread, NULL, adder, arg) || pthread_create(°rouperThread, NULL, degrouper, arg) || pthread_create(&sentinelThread, NULL, sentinel, arg) || pthread_create(&readerThread, NULL, reader, arg))
+	if (pthread_create(&multiplierThread, NULL, multiplier, arg) || pthread_create(&adderThread, NULL, adder, arg) || pthread_create(&degrouperThread, NULL, degrouper, arg) || pthread_create(&sentinelThread, NULL, sentinel, arg) || pthread_create(&readerThread, NULL, reader, arg))
 	{
 		printErrorAndExit("Failed trying to create threads");
 	}
